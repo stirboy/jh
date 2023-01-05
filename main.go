@@ -20,6 +20,7 @@ func main() {
 			fmt.Println()
 			os.Exit(1)
 		}
+		fmt.Printf("Error occured during the command %v", err)
 		os.Exit(1)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -54,7 +55,8 @@ func run(ops *CreateOptions) error {
 	projectsChan := make(chan *jira.ProjectList)
 	go func() {
 		defer timeTrack(time.Now(), "jira Get Projects")
-		p, _, err := jiraClient.Project.GetAll(context.Background(), &jira.GetQueryOptions{
+
+		req, err := jiraClient.NewRequest(context.Background(), http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes", &jira.GetQueryOptions{
 			Expand: "issueTypes",
 		})
 		if err != nil {
@@ -62,7 +64,14 @@ func run(ops *CreateOptions) error {
 			return
 		}
 
-		projectsChan <- p
+		projectList := new(jira.ProjectList)
+		_, err = jiraClient.Do(req, projectList)
+		if err != nil {
+			projectsChan <- nil
+			return
+		}
+
+		projectsChan <- projectList
 	}()
 
 	summary, err := getSummary()
@@ -71,6 +80,9 @@ func run(ops *CreateOptions) error {
 	}
 
 	projects := <-projectsChan
+	if projects == nil {
+		return errors.New("cannot load projects")
+	}
 	project, err := getProject(projects)
 	if err != nil {
 		return err
@@ -208,5 +220,7 @@ func Validator(value string) error {
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
-	log.Printf("%s took %s", name, elapsed)
+	if elapsed > 10 {
+		log.Printf("%s took %s", name, elapsed)
+	}
 }
