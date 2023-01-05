@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
@@ -41,6 +39,48 @@ func NewGetCmd(f *factory.Factory) *cobra.Command {
 	return cmd
 }
 
+type ProjectResult struct {
+	projectMap map[string]*Project
+	err        error
+}
+
+func obtainProject(jiraClient *jira.Client) *ProjectResult {
+	req, err := jiraClient.NewRequest(context.Background(),
+		http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes",
+		&jira.GetQueryOptions{
+			Expand: "issueTypes",
+		})
+	if err != nil {
+		return &ProjectResult{
+			projectMap: nil,
+			err:        err,
+		}
+	}
+
+	projects := new(jira.ProjectList)
+	_, err = jiraClient.Do(req, projects)
+	if err != nil {
+		return &ProjectResult{
+			projectMap: nil,
+			err:        err,
+		}
+	}
+
+	mapOfProjects := make(map[string]*Project)
+	for i := 0; i < len(*projects); i++ {
+		mapOfProjects[(*projects)[i].Key] = &Project{
+			Key:            (*projects)[i].Key,
+			ProjectTypeKey: (*projects)[i].ProjectTypeKey,
+			IssueTypes:     (*projects)[i].IssueTypes,
+		}
+	}
+
+	return &ProjectResult{
+		projectMap: mapOfProjects,
+		err:        nil,
+	}
+}
+
 func run(ops *CreateOptions) error {
 	jiraClient, err := ops.JiraClient()
 	if err != nil {
@@ -52,51 +92,62 @@ func run(ops *CreateOptions) error {
 		return err
 	}
 
-	projectsChan := make(chan *jira.ProjectList)
+	projectResultChan := make(chan *ProjectResult)
 	go func() {
-		defer timeTrack(time.Now(), "jira Get Projects")
-
-		req, err := jiraClient.NewRequest(context.Background(), http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes", &jira.GetQueryOptions{
-			Expand: "issueTypes",
-		})
-		if err != nil {
-			projectsChan <- nil
-			return
-		}
-
-		projectList := new(jira.ProjectList)
-		_, err = jiraClient.Do(req, projectList)
-		if err != nil {
-			projectsChan <- nil
-			return
-		}
-
-		projectsChan <- projectList
+		p := obtainProject(jiraClient)
+		projectResultChan <- p
+		close(projectResultChan)
 	}()
 
-	summary, err := getSummary()
+	summary, err := selectSummary()
 	if err != nil {
 		return err
 	}
 
-	projects := <-projectsChan
-	if projects == nil {
-		return errors.New("cannot load projects")
+	projectResult := <-projectResultChan
+	if projectResult.err != nil {
+		return err
 	}
-	project, err := getProject(projects)
+
+	project, err := selectProject(projectResult.projectMap)
 	if err != nil {
 		return err
 	}
 
-	issueType, err := getIssueType(project)
+	issueType, err := selectIssueType(project)
 	if err != nil {
 		return err
+	}
+
+	fields, _, err := jiraClient.Issue.GetCreateMeta(context.Background(), &jira.GetQueryOptions{
+		Expand:      "projects.issuetypes.fields",
+		ProjectKeys: project.Key,
+	})
+	if err != nil {
+		return err
+	}
+
+	m := fields.Projects[0].IssueTypes[0].Fields
+	requiredFields := make(map[string]bool)
+	for k := range m {
+		r, exists := m.Value(k + "/required")
+		if exists && r == true {
+			requiredFields[k] = true
+		}
+	}
+
+	fmt.Printf("required fields %v\n", requiredFields)
+
+	var reporter *jira.User
+	reporterRequired := requiredFields["reporter"]
+	if reporterRequired {
+		reporter = curUser
 	}
 
 	issue, resp, err := jiraClient.Issue.Create(context.Background(), &jira.Issue{
 		Fields: &jira.IssueFields{
 			Summary:  summary,
-			Reporter: curUser,
+			Reporter: reporter,
 			Assignee: curUser,
 			Project: jira.Project{
 				Key: project.Key,
@@ -121,7 +172,7 @@ func run(ops *CreateOptions) error {
 	return nil
 }
 
-func getSummary() (string, error) {
+func selectSummary() (string, error) {
 	summary := ""
 	prompt := &survey.Input{
 		Message: "Issue Summary",
@@ -139,18 +190,7 @@ type Project struct {
 	IssueTypes     []jira.IssueType
 }
 
-func getProject(projects *jira.ProjectList) (*Project, error) {
-	defer timeTrack(time.Now(), "process projects")
-
-	mapOfProjects := make(map[string]*Project)
-	for i := 0; i < len(*projects); i++ {
-		mapOfProjects[(*projects)[i].Key] = &Project{
-			Key:            (*projects)[i].Key,
-			ProjectTypeKey: (*projects)[i].ProjectTypeKey,
-			IssueTypes:     (*projects)[i].IssueTypes,
-		}
-	}
-
+func selectProject(mapOfProjects map[string]*Project) (*Project, error) {
 	projectKeys := make([]string, len(mapOfProjects))
 	idx := 0
 	for k := range mapOfProjects {
@@ -173,7 +213,7 @@ func getProject(projects *jira.ProjectList) (*Project, error) {
 	return mapOfProjects[selectedProject], nil
 }
 
-func getIssueType(project *Project) (*jira.IssueType, error) {
+func selectIssueType(project *Project) (*jira.IssueType, error) {
 	mapOfIssueTypes := make(map[string]*jira.IssueType)
 	for i := 0; i < len(project.IssueTypes); i++ {
 		mapOfIssueTypes[project.IssueTypes[i].Name] = &project.IssueTypes[i]
@@ -216,11 +256,4 @@ func Validator(value string) error {
 		return errors.New("a value is required")
 	}
 	return nil
-}
-
-func timeTrack(start time.Time, name string) {
-	elapsed := time.Since(start)
-	if elapsed > 10 {
-		log.Printf("%s took %s", name, elapsed)
-	}
 }
