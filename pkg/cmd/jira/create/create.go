@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
@@ -49,16 +51,35 @@ func run(ops *CreateOptions) error {
 		return err
 	}
 
-	projects, _, err := jiraClient.Project.GetAll(context.Background(), &jira.GetQueryOptions{
-		Expand: "issueTypes",
-	})
+	projectsChan := make(chan *jira.ProjectList)
+	go func() {
+		defer timeTrack(time.Now(), "jira Get Projects")
+		p, _, err := jiraClient.Project.GetAll(context.Background(), &jira.GetQueryOptions{
+			Expand: "issueTypes",
+		})
+		if err != nil {
+			projectsChan <- nil
+			return
+		}
+
+		projectsChan <- p
+	}()
+
+	summary, err := getSummary()
 	if err != nil {
 		return err
 	}
 
-	summary := getSummary()
-	project := getProject(projects)
-	issueType := getIssueType(project)
+	projects := <-projectsChan
+	project, err := getProject(projects)
+	if err != nil {
+		return err
+	}
+
+	issueType, err := getIssueType(project)
+	if err != nil {
+		return err
+	}
 
 	issue, resp, err := jiraClient.Issue.Create(context.Background(), &jira.Issue{
 		Fields: &jira.IssueFields{
@@ -88,14 +109,16 @@ func run(ops *CreateOptions) error {
 	return nil
 }
 
-func getSummary() string {
+func getSummary() (string, error) {
 	summary := ""
 	prompt := &survey.Input{
 		Message: "Issue Summary",
 	}
-	askSurvey(prompt, &summary)
+	if err := askSurvey(prompt, &summary); err != nil {
+		return "", err
+	}
 
-	return summary
+	return summary, nil
 }
 
 type Project struct {
@@ -104,7 +127,9 @@ type Project struct {
 	IssueTypes     []jira.IssueType
 }
 
-func getProject(projects *jira.ProjectList) *Project {
+func getProject(projects *jira.ProjectList) (*Project, error) {
+	defer timeTrack(time.Now(), "process projects")
+
 	mapOfProjects := make(map[string]*Project)
 	for i := 0; i < len(*projects); i++ {
 		mapOfProjects[(*projects)[i].Key] = &Project{
@@ -128,12 +153,15 @@ func getProject(projects *jira.ProjectList) *Project {
 	}
 
 	selectedProject := ""
-	survey.AskOne(prompt, &selectedProject)
+	err := survey.AskOne(prompt, &selectedProject)
+	if err != nil {
+		return nil, err
+	}
 
-	return mapOfProjects[selectedProject]
+	return mapOfProjects[selectedProject], nil
 }
 
-func getIssueType(project *Project) *jira.IssueType {
+func getIssueType(project *Project) (*jira.IssueType, error) {
 	mapOfIssueTypes := make(map[string]*jira.IssueType)
 	for i := 0; i < len(project.IssueTypes); i++ {
 		mapOfIssueTypes[project.IssueTypes[i].Name] = &project.IssueTypes[i]
@@ -153,13 +181,16 @@ func getIssueType(project *Project) *jira.IssueType {
 	}
 
 	selectedIssueType := ""
-	survey.AskOne(prompt, &selectedIssueType)
+	err := survey.AskOne(prompt, &selectedIssueType)
+	if err != nil {
+		return nil, err
+	}
 
-	return mapOfIssueTypes[selectedIssueType]
+	return mapOfIssueTypes[selectedIssueType], nil
 }
 
-func askSurvey(p survey.Prompt, r interface{}) {
-	survey.AskOne(p, r, survey.WithIcons(func(icons *survey.IconSet) {
+func askSurvey(p survey.Prompt, r interface{}) error {
+	return survey.AskOne(p, r, survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question.Text = ">>"
 		icons.Question.Format = "green+hb"
 	}), survey.WithValidator(func(ans interface{}) error {
@@ -173,4 +204,9 @@ func Validator(value string) error {
 		return errors.New("a value is required")
 	}
 	return nil
+}
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
 }

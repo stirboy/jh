@@ -15,6 +15,9 @@ func NewCmdRoot(f *factory.Factory) *cobra.Command {
 		Short:   "jira helper",
 	}
 
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+
 	cmd.AddCommand(auth.NewAuthCmd(f))
 	cmd.AddCommand(jiraGet.NewGetCmd(f))
 	cmd.AddCommand(jiraCreate.NewGetCmd(f))

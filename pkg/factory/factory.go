@@ -3,21 +3,28 @@ package factory
 import (
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/stirboy/jh/pkg/config"
+	"go.uber.org/zap"
 )
 
 type Factory struct {
 	Config     func() (config.Config, error)
 	JiraClient func() (*jira.Client, error)
+	Log        *zap.Logger
 }
 
 func NewFactory() *Factory {
 	f := &Factory{
 		Config: configFunc(),
+		Log:    createLogger(),
 	}
 
 	f.JiraClient = jiraClientFunc(f) // depends on Config
 
 	return f
+}
+
+func createLogger() *zap.Logger {
+	return zap.Must(zap.NewProduction())
 }
 
 func configFunc() func() (config.Config, error) {
