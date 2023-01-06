@@ -2,7 +2,10 @@ package utils
 
 import (
 	"errors"
+	"io"
 	"reflect"
+
+	jira "github.com/andygrunwald/go-jira/v2/cloud"
 )
 
 func MapStringKeys(val interface{}) ([]string, error) {
@@ -31,6 +34,17 @@ func MapStringKeys(val interface{}) ([]string, error) {
 	}
 
 	return resultSlice.Interface().([]string), nil
+}
+
+func ParseJiraResponse(resp *jira.Response) error {
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return errors.New("can't parse response body")
+	}
+	bodyString := string(bodyBytes)
+	return errors.New(bodyString)
 }
 
 func getMapType(val interface{}) (reflect.Type, bool) {

@@ -2,13 +2,13 @@ package create
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
+	"github.com/stirboy/jh/pkg/cmd/jira/users"
 	"github.com/stirboy/jh/pkg/factory"
+	"github.com/stirboy/jh/pkg/utils"
 )
 
 type CreateOptions struct {
@@ -43,21 +43,21 @@ func run(ops *CreateOptions) error {
 	}
 
 	// get current user without blocking the flow
-	curUserChan := make(chan *CurrentUserResult)
-	getCurrentUserResultAsync(jiraClient, curUserChan)
+	curUserChan := make(chan *users.CurrentUserResult)
+	users.GetCurrentUserResultAsync(jiraClient, curUserChan)
 
 	// get recent project without blocking the flow
 	recentProjectsResultChan := make(chan *ProjectResult)
 	getRecentProjectsResultAsync(jiraClient, recentProjectsResultChan)
 
-	summary, err := selectSummary()
+	summary, err := "", nil
 	if err != nil {
 		return err
 	}
 
 	// waiting for recent project to load
 	recentProjectResult := <-recentProjectsResultChan
-	if recentProjectResult.err != nil {
+	if err = recentProjectResult.err; err != nil {
 		return err
 	}
 
@@ -77,27 +77,27 @@ func run(ops *CreateOptions) error {
 
 	// waiting for required fields to load
 	requiredFieldsResult := <-requiredFieldsChan
-	if requiredFieldsResult.err != nil {
-		return requiredFieldsResult.err
+	if err = requiredFieldsResult.err; err != nil {
+		return err
 	}
 
 	// waiting fir current user to load
 	currentUserResult := <-curUserChan
-	if currentUserResult.err != nil {
-		return currentUserResult.err
+	if err = currentUserResult.Err; err != nil {
+		return err
 	}
 
 	var reporter *jira.User
 	reporterRequired := requiredFieldsResult.fields["reporter"]
 	if reporterRequired {
-		reporter = currentUserResult.user
+		reporter = currentUserResult.User
 	}
 
 	issue, resp, err := jiraClient.Issue.Create(context.Background(), &jira.Issue{
 		Fields: &jira.IssueFields{
 			Summary:  summary,
 			Reporter: reporter,
-			Assignee: currentUserResult.user,
+			Assignee: currentUserResult.User,
 			Project: jira.Project{
 				Key: project.Key,
 			},
@@ -107,20 +107,9 @@ func run(ops *CreateOptions) error {
 		},
 	})
 	if err != nil {
-		return parseCreateResponse(resp)
+		return utils.ParseJiraResponse(resp)
 	}
 
 	fmt.Printf("Created Issue: %s%s%s\n", jiraClient.BaseURL, "browse/", issue.Key)
 	return nil
-}
-
-func parseCreateResponse(resp *jira.Response) error {
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return errors.New("can't parse response body")
-	}
-	bodyString := string(bodyBytes)
-	return errors.New(bodyString)
 }

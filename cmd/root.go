@@ -22,5 +22,7 @@ func NewCmdRoot(f *factory.Factory) *cobra.Command {
 	cmd.AddCommand(jiraGet.NewGetCmd(f))
 	cmd.AddCommand(jiraCreate.NewGetCmd(f))
 
+	auth.DisableAuthCheck(cmd)
+
 	return cmd
 }

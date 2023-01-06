@@ -17,7 +17,7 @@ var (
 )
 
 type Config interface {
-	//AuthToken(string) (string, string)
+	AuthToken() (string, error)
 	Get(string) (string, error)
 	Set(string, string)
 	Write() error
@@ -35,6 +35,15 @@ func NewConfig() (Config, error) {
 type cfg struct {
 	entries *yamlmap.Map
 	mu      sync.RWMutex
+}
+
+func (c *cfg) AuthToken() (string, error) {
+	val, err := c.Get("token")
+	if err != nil {
+		return "", err
+	}
+
+	return val, nil
 }
 
 func (c *cfg) Get(key string) (string, error) {

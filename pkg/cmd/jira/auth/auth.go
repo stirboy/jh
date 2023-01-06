@@ -6,17 +6,20 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
+	"github.com/stirboy/jh/pkg/cmd/jira/users"
 	"github.com/stirboy/jh/pkg/config"
 	"github.com/stirboy/jh/pkg/factory"
 )
 
 type AuthOptions struct {
-	Config func() (config.Config, error)
+	Config     func() (config.Config, error)
+	JiraClient func() (*jira.Client, error)
 }
 
 func NewAuthCmd(f *factory.Factory) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "auth",
 		Short: "jira authentication",
 
@@ -27,6 +30,10 @@ func NewAuthCmd(f *factory.Factory) *cobra.Command {
 			return run(ops)
 		},
 	}
+
+	DisableAuthCheck(cmd)
+
+	return cmd
 }
 
 func run(ops *AuthOptions) error {
@@ -81,6 +88,15 @@ func run(ops *AuthOptions) error {
 		return err
 	}
 
+	jiraClient, err := ops.JiraClient()
+	if err != nil {
+		return err
+	}
+
+	_, _, err = users.GetCurrentUser(jiraClient)
+	if err != nil {
+		return err
+	}
 	fmt.Print("Successfully authenticated\n")
 	return nil
 }
