@@ -10,12 +10,6 @@ import (
 	"github.com/stirboy/jh/pkg/utils"
 )
 
-type UnluckyError struct{}
-
-func (e *UnluckyError) Error() string {
-	return "Not today ;)"
-}
-
 func GetRandomGem() {
 	rand.Seed(time.Now().Unix())
 
@@ -23,7 +17,7 @@ func GetRandomGem() {
 	max := 100
 
 	r := min + rand.Intn(max-min)
-	if r <= 100 {
+	if r <= 15 {
 
 		joke, err := fetchRandomDadJoke()
 		if err != nil {
