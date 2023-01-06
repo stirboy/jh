@@ -12,6 +12,7 @@ import (
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/factory"
+	"github.com/stirboy/jh/pkg/utils"
 )
 
 type CreateOptions struct {
@@ -39,48 +40,6 @@ func NewGetCmd(f *factory.Factory) *cobra.Command {
 	return cmd
 }
 
-type ProjectResult struct {
-	projectMap map[string]*Project
-	err        error
-}
-
-func obtainProject(jiraClient *jira.Client) *ProjectResult {
-	req, err := jiraClient.NewRequest(context.Background(),
-		http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes",
-		&jira.GetQueryOptions{
-			Expand: "issueTypes",
-		})
-	if err != nil {
-		return &ProjectResult{
-			projectMap: nil,
-			err:        err,
-		}
-	}
-
-	projects := new(jira.ProjectList)
-	_, err = jiraClient.Do(req, projects)
-	if err != nil {
-		return &ProjectResult{
-			projectMap: nil,
-			err:        err,
-		}
-	}
-
-	mapOfProjects := make(map[string]*Project)
-	for i := 0; i < len(*projects); i++ {
-		mapOfProjects[(*projects)[i].Key] = &Project{
-			Key:            (*projects)[i].Key,
-			ProjectTypeKey: (*projects)[i].ProjectTypeKey,
-			IssueTypes:     (*projects)[i].IssueTypes,
-		}
-	}
-
-	return &ProjectResult{
-		projectMap: mapOfProjects,
-		err:        nil,
-	}
-}
-
 func run(ops *CreateOptions) error {
 	jiraClient, err := ops.JiraClient()
 	if err != nil {
@@ -94,7 +53,7 @@ func run(ops *CreateOptions) error {
 
 	projectResultChan := make(chan *ProjectResult)
 	go func() {
-		p := obtainProject(jiraClient)
+		p := getProjectResult(jiraClient)
 		projectResultChan <- p
 		close(projectResultChan)
 	}()
@@ -109,7 +68,7 @@ func run(ops *CreateOptions) error {
 		return err
 	}
 
-	project, err := selectProject(projectResult.projectMap)
+	project, err := selectProject(projectResult.projectKeyMap)
 	if err != nil {
 		return err
 	}
@@ -172,6 +131,48 @@ func run(ops *CreateOptions) error {
 	return nil
 }
 
+type ProjectResult struct {
+	projectKeyMap map[string]*Project
+	err           error
+}
+
+func getProjectResult(jiraClient *jira.Client) *ProjectResult {
+	req, err := jiraClient.NewRequest(context.Background(),
+		http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes",
+		&jira.GetQueryOptions{
+			Expand: "issueTypes",
+		})
+	if err != nil {
+		return &ProjectResult{
+			projectKeyMap: nil,
+			err:           err,
+		}
+	}
+
+	projects := new(jira.ProjectList)
+	_, err = jiraClient.Do(req, projects)
+	if err != nil {
+		return &ProjectResult{
+			projectKeyMap: nil,
+			err:           err,
+		}
+	}
+
+	mapOfProjects := make(map[string]*Project)
+	for i := 0; i < len(*projects); i++ {
+		mapOfProjects[(*projects)[i].Key] = &Project{
+			Key:            (*projects)[i].Key,
+			ProjectTypeKey: (*projects)[i].ProjectTypeKey,
+			IssueTypes:     (*projects)[i].IssueTypes,
+		}
+	}
+
+	return &ProjectResult{
+		projectKeyMap: mapOfProjects,
+		err:           nil,
+	}
+}
+
 func selectSummary() (string, error) {
 	summary := ""
 	prompt := &survey.Input{
@@ -190,12 +191,10 @@ type Project struct {
 	IssueTypes     []jira.IssueType
 }
 
-func selectProject(mapOfProjects map[string]*Project) (*Project, error) {
-	projectKeys := make([]string, len(mapOfProjects))
-	idx := 0
-	for k := range mapOfProjects {
-		projectKeys[idx] = k
-		idx++
+func selectProject(projectKeyMap map[string]*Project) (*Project, error) {
+	projectKeys, err := utils.MapStringKeys(projectKeyMap)
+	if err != nil {
+		return nil, err
 	}
 
 	prompt := &survey.Select{
@@ -205,12 +204,12 @@ func selectProject(mapOfProjects map[string]*Project) (*Project, error) {
 	}
 
 	selectedProject := ""
-	err := survey.AskOne(prompt, &selectedProject)
+	err = survey.AskOne(prompt, &selectedProject)
 	if err != nil {
 		return nil, err
 	}
 
-	return mapOfProjects[selectedProject], nil
+	return projectKeyMap[selectedProject], nil
 }
 
 func selectIssueType(project *Project) (*jira.IssueType, error) {
@@ -219,11 +218,9 @@ func selectIssueType(project *Project) (*jira.IssueType, error) {
 		mapOfIssueTypes[project.IssueTypes[i].Name] = &project.IssueTypes[i]
 	}
 
-	issueTypeKeys := make([]string, len(mapOfIssueTypes))
-	idx := 0
-	for k := range mapOfIssueTypes {
-		issueTypeKeys[idx] = k
-		idx++
+	issueTypeKeys, err := utils.MapStringKeys(mapOfIssueTypes)
+	if err != nil {
+		return nil, err
 	}
 
 	prompt := &survey.Select{
@@ -233,7 +230,7 @@ func selectIssueType(project *Project) (*jira.IssueType, error) {
 	}
 
 	selectedIssueType := ""
-	err := survey.AskOne(prompt, &selectedIssueType)
+	err = survey.AskOne(prompt, &selectedIssueType)
 	if err != nil {
 		return nil, err
 	}
