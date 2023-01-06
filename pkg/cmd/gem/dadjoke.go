@@ -23,7 +23,7 @@ func GetRandomGem() {
 	max := 100
 
 	r := min + rand.Intn(max-min)
-	if r <= 15 {
+	if r <= 100 {
 
 		joke, err := fetchRandomDadJoke()
 		if err != nil {
@@ -31,13 +31,14 @@ func GetRandomGem() {
 			return
 		}
 
-		fmt.Println("--------------------------------------------------------------------")
-		fmt.Println(heredoc.Doc(`
-		YOU ARE IN LUCK!
-		Here is a dad joke for you ¯\_(ツ)_/¯ 
-	`))
-		fmt.Printf("%v\n", joke)
-		fmt.Println("--------------------------------------------------------------------")
+		fmt.Print(heredoc.Docf(`
+		-------------------------------------------------------------------
+		YOU ARE IN LUCK!												     
+		Here is a dad joke for you ¯\_(ツ)_/¯
+			
+		%s
+		-------------------------------------------------------------------
+	`, joke))
 	}
 }
 
