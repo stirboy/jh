@@ -2,17 +2,20 @@ package factory
 
 import (
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
+	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
 	"github.com/stirboy/jh/pkg/config"
 )
 
 type Factory struct {
 	Config     func() (config.Config, error)
 	JiraClient func() (*jira.Client, error)
+	Prompter   prompt.Prompter
 }
 
 func NewFactory() *Factory {
 	f := &Factory{
-		Config: configFunc(),
+		Config:   configFunc(),
+		Prompter: prompt.NewPrompter(),
 	}
 
 	f.JiraClient = jiraClientFunc(f) // depends on Config

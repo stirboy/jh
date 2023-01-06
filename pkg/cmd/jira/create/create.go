@@ -6,16 +6,15 @@ import (
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
+	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
 	"github.com/stirboy/jh/pkg/cmd/jira/users"
 	"github.com/stirboy/jh/pkg/factory"
 	"github.com/stirboy/jh/pkg/utils"
 )
 
 type CreateOptions struct {
-	JiraClient       func() (*jira.Client, error)
-	IssueSummary     string
-	IssueDescription string
-	JiraIssueType    string
+	JiraClient func() (*jira.Client, error)
+	Prompter   prompt.Prompter
 }
 
 func NewGetCmd(f *factory.Factory) *cobra.Command {
@@ -28,6 +27,7 @@ func NewGetCmd(f *factory.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ops := &CreateOptions{
 				JiraClient: f.JiraClient,
+				Prompter:   f.Prompter,
 			}
 			return run(ops)
 		},
@@ -50,7 +50,7 @@ func run(ops *CreateOptions) error {
 	recentProjectsResultChan := make(chan *ProjectResult)
 	getRecentProjectsResultAsync(jiraClient, recentProjectsResultChan)
 
-	summary, err := "", nil
+	summary, err := inputSummary(ops.Prompter)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func run(ops *CreateOptions) error {
 		return err
 	}
 
-	project, err := selectProject(recentProjectResult.projectKeyMap)
+	project, err := selectProject(ops.Prompter, recentProjectResult.projectKeyMap)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func run(ops *CreateOptions) error {
 	requiredFieldsChan := make(chan *RequiredFieldsResult)
 	getRequiredFieldsResultAsync(jiraClient, project, requiredFieldsChan)
 
-	issueType, err := selectIssueType(project)
+	issueType, err := selectIssueType(ops.Prompter, project)
 	if err != nil {
 		return err
 	}
