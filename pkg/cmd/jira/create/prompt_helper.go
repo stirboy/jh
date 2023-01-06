@@ -14,7 +14,7 @@ func selectSummary() (string, error) {
 	prompt := &survey.Input{
 		Message: "Issue Summary",
 	}
-	if err := askSurvey(prompt, &summary); err != nil {
+	if err := askSurveyWithValidation(prompt, &summary); err != nil {
 		return "", err
 	}
 
@@ -34,7 +34,7 @@ func selectProject(projectKeyMap map[string]*Project) (*Project, error) {
 	}
 
 	selectedProject := ""
-	err = survey.AskOne(prompt, &selectedProject)
+	err = askSurvey(prompt, &selectedProject)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func selectIssueType(project *Project) (*jira.IssueType, error) {
 	}
 
 	selectedIssueType := ""
-	err = survey.AskOne(prompt, &selectedIssueType)
+	err = askSurvey(prompt, &selectedIssueType)
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +69,13 @@ func selectIssueType(project *Project) (*jira.IssueType, error) {
 }
 
 func askSurvey(p survey.Prompt, r interface{}) error {
+	return survey.AskOne(p, r, survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question.Text = ">>"
+		icons.Question.Format = "green+hb"
+	}))
+}
+
+func askSurveyWithValidation(p survey.Prompt, r interface{}) error {
 	return survey.AskOne(p, r, survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question.Text = ">>"
 		icons.Question.Format = "green+hb"
