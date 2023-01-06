@@ -38,7 +38,7 @@ func main() {
 			fmt.Println("")
 			os.Exit(1)
 		}
-		fmt.Printf("error occured during the command %v\n", err)
+		fmt.Printf("error occured: %v\n", err)
 		os.Exit(1)
 	}
 }
