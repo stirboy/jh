@@ -8,6 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/cmd"
+	"github.com/stirboy/jh/pkg/cmd/gem"
 	"github.com/stirboy/jh/pkg/cmd/jira/auth"
 	"github.com/stirboy/jh/pkg/factory"
 )
@@ -41,6 +42,8 @@ func main() {
 		fmt.Printf("error occured: %v\n", err)
 		os.Exit(1)
 	}
+
+	gem.GetRandomGem()
 }
 
 func IsUserCancellation(err error) bool {

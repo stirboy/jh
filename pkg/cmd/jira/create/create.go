@@ -3,12 +3,8 @@ package create
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
 	"github.com/stirboy/jh/pkg/cmd/jira/users"
@@ -120,50 +116,8 @@ func run(ops *CreateOptions) error {
 
 	fmt.Printf("\ncreated issue: %s%s%s\n", jiraClient.BaseURL, "browse/", issue.Key)
 
-	if err = createGitBranch(issue.Key, ops); err != nil {
+	if err = CreateGitBranch(issue.Key, ops); err != nil {
 		return err
 	}
-	return nil
-}
-
-func createGitBranch(issueKey string, ops *CreateOptions) error {
-	// create and checkout to new branch
-	if ops.CreateGitBranch == "" {
-		return nil
-	}
-
-	// printing out a line for formatting
-	fmt.Println()
-
-	path, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("jh create branch failed: %w", err)
-	}
-
-	r, err := git.PlainOpen(path)
-	if err != nil {
-		return fmt.Errorf("jh create branch failed: %w", err)
-	}
-
-	worktree, err := r.Worktree()
-	if err != nil {
-		return fmt.Errorf("jh create branch failed: %w", err)
-	}
-
-	branchName := strings.Replace(ops.CreateGitBranch, "@", strings.ToLower(issueKey), 1)
-	err = worktree.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName(branchName),
-		Create: true,
-		Keep:   true,
-	})
-	if err != nil {
-		return fmt.Errorf("jh create branch failed: %w", err)
-	}
-
-	// here we dont care if we have error or not as branch was already created
-	s, _ := worktree.Status()
-	fmt.Printf("%v\n", s.String())
-	fmt.Printf("switched to branch: '%v'\n", branchName)
-
 	return nil
 }

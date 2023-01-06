@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"io"
+	"net/http"
 	"reflect"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
@@ -45,6 +46,16 @@ func ParseJiraResponse(resp *jira.Response) error {
 	}
 	bodyString := string(bodyBytes)
 	return errors.New(bodyString)
+}
+
+func ParseResponse(resp *http.Response) ([]byte, error) {
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return bodyBytes, nil
 }
 
 func getMapType(val interface{}) (reflect.Type, bool) {
