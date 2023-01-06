@@ -5,14 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/factory"
-	"github.com/stirboy/jh/pkg/utils"
 )
 
 type CreateOptions struct {
@@ -46,68 +42,62 @@ func run(ops *CreateOptions) error {
 		return err
 	}
 
-	curUser, _, err := jiraClient.User.GetCurrentUser(context.Background())
-	if err != nil {
-		return err
-	}
+	// get current user without blocking the flow
+	curUserChan := make(chan *CurrentUserResult)
+	getCurrentUserResultAsync(jiraClient, curUserChan)
 
-	projectResultChan := make(chan *ProjectResult)
-	go func() {
-		p := getProjectResult(jiraClient)
-		projectResultChan <- p
-		close(projectResultChan)
-	}()
+	// get recent project without blocking the flow
+	recentProjectsResultChan := make(chan *ProjectResult)
+	getRecentProjectsResultAsync(jiraClient, recentProjectsResultChan)
 
 	summary, err := selectSummary()
 	if err != nil {
 		return err
 	}
 
-	projectResult := <-projectResultChan
-	if projectResult.err != nil {
+	// waiting for recent project to load
+	recentProjectResult := <-recentProjectsResultChan
+	if recentProjectResult.err != nil {
 		return err
 	}
 
-	project, err := selectProject(projectResult.projectKeyMap)
+	project, err := selectProject(recentProjectResult.projectKeyMap)
 	if err != nil {
 		return err
 	}
+
+	// get required fields for jira project without blocking the flow
+	requiredFieldsChan := make(chan *RequiredFieldsResult)
+	getRequiredFieldsResultAsync(jiraClient, project, requiredFieldsChan)
 
 	issueType, err := selectIssueType(project)
 	if err != nil {
 		return err
 	}
 
-	fields, _, err := jiraClient.Issue.GetCreateMeta(context.Background(), &jira.GetQueryOptions{
-		Expand:      "projects.issuetypes.fields",
-		ProjectKeys: project.Key,
-	})
-	if err != nil {
-		return err
+	// waiting for required fields to load
+	requiredFieldsResult := <-requiredFieldsChan
+	if requiredFieldsResult.err != nil {
+		return requiredFieldsResult.err
 	}
 
-	m := fields.Projects[0].IssueTypes[0].Fields
-	requiredFields := make(map[string]bool)
-	for k := range m {
-		r, exists := m.Value(k + "/required")
-		if exists && r == true {
-			requiredFields[k] = true
-		}
+	// waiting fir current user to load
+	currentUserResult := <-curUserChan
+	if currentUserResult.err != nil {
+		return currentUserResult.err
 	}
-
-	fmt.Printf("required fields %v\n", requiredFields)
 
 	var reporter *jira.User
-	reporterRequired := requiredFields["reporter"]
+	reporterRequired := requiredFieldsResult.fields["reporter"]
 	if reporterRequired {
-		reporter = curUser
+		reporter = currentUserResult.user
 	}
 
 	issue, resp, err := jiraClient.Issue.Create(context.Background(), &jira.Issue{
 		Fields: &jira.IssueFields{
 			Summary:  summary,
 			Reporter: reporter,
-			Assignee: curUser,
+			Assignee: currentUserResult.user,
 			Project: jira.Project{
 				Key: project.Key,
 			},
@@ -117,140 +107,20 @@ func run(ops *CreateOptions) error {
 		},
 	})
 	if err != nil {
-		defer resp.Body.Close()
-
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return errors.New("can't parse response body")
-		}
-		bodyString := string(bodyBytes)
-		return errors.New(bodyString)
+		return parseCreateResponse(resp)
 	}
 
 	fmt.Printf("Created Issue: %s%s%s\n", jiraClient.BaseURL, "browse/", issue.Key)
 	return nil
 }
 
-type ProjectResult struct {
-	projectKeyMap map[string]*Project
-	err           error
-}
+func parseCreateResponse(resp *jira.Response) error {
+	defer resp.Body.Close()
 
-func getProjectResult(jiraClient *jira.Client) *ProjectResult {
-	req, err := jiraClient.NewRequest(context.Background(),
-		http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes",
-		&jira.GetQueryOptions{
-			Expand: "issueTypes",
-		})
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &ProjectResult{
-			projectKeyMap: nil,
-			err:           err,
-		}
+		return errors.New("can't parse response body")
 	}
-
-	projects := new(jira.ProjectList)
-	_, err = jiraClient.Do(req, projects)
-	if err != nil {
-		return &ProjectResult{
-			projectKeyMap: nil,
-			err:           err,
-		}
-	}
-
-	mapOfProjects := make(map[string]*Project)
-	for i := 0; i < len(*projects); i++ {
-		mapOfProjects[(*projects)[i].Key] = &Project{
-			Key:            (*projects)[i].Key,
-			ProjectTypeKey: (*projects)[i].ProjectTypeKey,
-			IssueTypes:     (*projects)[i].IssueTypes,
-		}
-	}
-
-	return &ProjectResult{
-		projectKeyMap: mapOfProjects,
-		err:           nil,
-	}
-}
-
-func selectSummary() (string, error) {
-	summary := ""
-	prompt := &survey.Input{
-		Message: "Issue Summary",
-	}
-	if err := askSurvey(prompt, &summary); err != nil {
-		return "", err
-	}
-
-	return summary, nil
-}
-
-type Project struct {
-	Key            string
-	ProjectTypeKey string
-	IssueTypes     []jira.IssueType
-}
-
-func selectProject(projectKeyMap map[string]*Project) (*Project, error) {
-	projectKeys, err := utils.MapStringKeys(projectKeyMap)
-	if err != nil {
-		return nil, err
-	}
-
-	prompt := &survey.Select{
-		Message:  "Pick a project",
-		Options:  projectKeys,
-		PageSize: 10,
-	}
-
-	selectedProject := ""
-	err = survey.AskOne(prompt, &selectedProject)
-	if err != nil {
-		return nil, err
-	}
-
-	return projectKeyMap[selectedProject], nil
-}
-
-func selectIssueType(project *Project) (*jira.IssueType, error) {
-	mapOfIssueTypes := make(map[string]*jira.IssueType)
-	for i := 0; i < len(project.IssueTypes); i++ {
-		mapOfIssueTypes[project.IssueTypes[i].Name] = &project.IssueTypes[i]
-	}
-
-	issueTypeKeys, err := utils.MapStringKeys(mapOfIssueTypes)
-	if err != nil {
-		return nil, err
-	}
-
-	prompt := &survey.Select{
-		Message:  "Pick a issue type",
-		Options:  issueTypeKeys,
-		PageSize: 10,
-	}
-
-	selectedIssueType := ""
-	err = survey.AskOne(prompt, &selectedIssueType)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapOfIssueTypes[selectedIssueType], nil
-}
-
-func askSurvey(p survey.Prompt, r interface{}) error {
-	return survey.AskOne(p, r, survey.WithIcons(func(icons *survey.IconSet) {
-		icons.Question.Text = ">>"
-		icons.Question.Format = "green+hb"
-	}), survey.WithValidator(func(ans interface{}) error {
-		return Validator(ans.(string))
-	}),
-	)
-}
-
-func Validator(value string) error {
-	if len(strings.TrimSpace(value)) < 1 {
-		return errors.New("a value is required")
-	}
-	return nil
+	bodyString := string(bodyBytes)
+	return errors.New(bodyString)
 }
