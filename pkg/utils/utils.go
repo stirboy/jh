@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -44,8 +46,15 @@ func ParseJiraResponse(resp *jira.Response) error {
 	if err != nil {
 		return errors.New("can't parse response body")
 	}
-	bodyString := string(bodyBytes)
-	return errors.New(bodyString)
+
+	// format
+	formattedBody := &bytes.Buffer{}
+	if err = json.Indent(formattedBody, bodyBytes, "", "  "); err != nil {
+		// let's return unformatted body
+		return errors.New(string(bodyBytes))
+	}
+
+	return errors.New("\n" + formattedBody.String())
 }
 
 func ParseResponse(resp *http.Response) ([]byte, error) {
