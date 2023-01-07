@@ -25,45 +25,20 @@ func runAuthCommand(f *factory.Factory) error {
 	return err
 }
 
-func runCommand(cfg config.Config, in string, p prompt.Prompter) error {
-	stdin := &bytes.Buffer{}
-	stdin.WriteString(in)
-	factory := &factory.Factory{
-		Config: func() (config.Config, error) {
-			return cfg, nil
-		},
-		JiraClient: func() (*jira.Client, error) {
-			// todo: provide jira client stub
-			reg := &httpmock.Registry{}
-			c := &http.Client{
-				Transport: reg,
-			}
-			reg.Register(
-				httpmock.REST("GET", "rest/api/3/myself"), httpmock.StringResponse("myself"),
-			)
-			return jira.NewClient("mock jir url", c)
-		},
-		Prompter: p,
-	}
-
-	cmd := NewAuthCmd(factory)
-
-	cmd.SetIn(stdin)
-	cmd.SetOut(&bytes.Buffer{})
-	cmd.SetErr(&bytes.Buffer{})
-
-	_, err := cmd.ExecuteC()
-	return err
-}
-
 func TestAuth_should_return_not_found_error(t *testing.T) {
 	c := heredoc.Doc(
 		`
 		username: ""
 
 		`)
+
 	cfg := config.NewFromString(c)
-	err := runCommand(cfg, "", nil)
+	factory := &factory.Factory{
+		Config: func() (config.Config, error) {
+			return cfg, nil
+		},
+	}
+	err := runAuthCommand(factory)
 	assert.EqualError(t, err, "not found")
 }
 
