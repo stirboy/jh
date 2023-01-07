@@ -7,6 +7,7 @@ const (
 	no  = "no"
 )
 
+//go:generate moq -rm -out prompter_mock.go . Prompter
 type Prompter interface {
 	Select(string, []string) (string, error)
 	SelectWithHelp(string, string, []string) (string, error)

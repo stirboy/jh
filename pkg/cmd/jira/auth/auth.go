@@ -10,6 +10,7 @@ import (
 	"github.com/stirboy/jh/pkg/cmd/jira/users"
 	"github.com/stirboy/jh/pkg/config"
 	"github.com/stirboy/jh/pkg/factory"
+	"github.com/stirboy/jh/pkg/utils"
 )
 
 type AuthOptions struct {
@@ -45,7 +46,7 @@ func run(ops *AuthOptions) error {
 		return err
 	}
 
-	t, err := cfg.Get("token")
+	t, err := cfg.AuthToken()
 	if err != nil {
 		return err
 	}
@@ -93,8 +94,11 @@ func run(ops *AuthOptions) error {
 		return err
 	}
 
-	_, _, err = users.GetCurrentUser(jiraClient)
+	_, resp, err := users.GetCurrentUser(jiraClient)
 	if err != nil {
+		if resp != nil {
+			return utils.ParseJiraResponse(resp)
+		}
 		return err
 	}
 	fmt.Println("Successfully authenticated.")

@@ -10,12 +10,15 @@ import (
 	"github.com/stirboy/jh/internal/yamlmap"
 )
 
+const JhConfigDir = "JH_CONFIG_DIR"
+
 var (
 	c         *cfg
 	once      sync.Once
 	loadError error
 )
 
+//go:generate moq -rm -out config_mock.go . Config
 type Config interface {
 	AuthToken() (string, error)
 	Get(string) (string, error)
@@ -75,6 +78,9 @@ func (c *cfg) Write() error {
 }
 
 func generalConfigFile() string {
+	if c := os.Getenv(JhConfigDir); c != "" {
+		return filepath.Join(c, "config.yml")
+	}
 	d, _ := os.UserHomeDir()
 	return filepath.Join(d, ".config", "jh", "config.yml")
 }
@@ -144,3 +150,13 @@ username:
 # Jira API Token
 token:
 `
+
+// ReadFromString takes a yaml string and returns a Config.
+// Note: This is only used for testing
+func ReadFromString(str string) *cfg {
+	m, _ := yamlmap.Unmarshal([]byte(str))
+	if m == nil {
+		m = yamlmap.MapValue()
+	}
+	return &cfg{entries: m}
+}
