@@ -2,7 +2,7 @@
 
 `jh` is a command tool utility to create jira issues right from the terminal
 
-![screenshot of jh create](./img/jh-create.png)
+![screenshot of jh create](.github/img/jh-create.png)
 
 ## Installation
 
