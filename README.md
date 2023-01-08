@@ -21,7 +21,6 @@
 
 3. Build and install
 
-   #### Unix-like systems
    ```sh
    
    $ go install
