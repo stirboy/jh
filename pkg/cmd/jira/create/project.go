@@ -8,9 +8,8 @@ import (
 )
 
 type Project struct {
-	Key            string
-	ProjectTypeKey string
-	IssueTypes     []jira.IssueType
+	Key        string
+	IssueTypes []jira.IssueType
 }
 
 type ProjectResult struct {
@@ -28,10 +27,7 @@ func getRecentProjectsResultAsync(jiraClient *jira.Client, ch chan<- *ProjectRes
 
 func getProjectResult(jiraClient *jira.Client) *ProjectResult {
 	req, err := jiraClient.NewRequest(context.Background(),
-		http.MethodGet, "/rest/api/3/project/recent?expand=issueTypes",
-		&jira.GetQueryOptions{
-			Expand: "issueTypes",
-		})
+		http.MethodGet, "rest/api/3/project/recent?expand=issueTypes", nil)
 	if err != nil {
 		return &ProjectResult{
 			projectKeyMap: nil,
@@ -51,9 +47,8 @@ func getProjectResult(jiraClient *jira.Client) *ProjectResult {
 	mapOfProjects := make(map[string]*Project)
 	for i := 0; i < len(*projects); i++ {
 		mapOfProjects[(*projects)[i].Key] = &Project{
-			Key:            (*projects)[i].Key,
-			ProjectTypeKey: (*projects)[i].ProjectTypeKey,
-			IssueTypes:     (*projects)[i].IssueTypes,
+			Key:        (*projects)[i].Key,
+			IssueTypes: (*projects)[i].IssueTypes,
 		}
 	}
 

@@ -10,9 +10,8 @@ import (
 
 func NewCmdRoot(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "jh",
-		Aliases: []string{"jh", "ji"},
-		Short:   "jira helper",
+		Use:   "jh",
+		Short: "jira helper",
 	}
 
 	cmd.SilenceErrors = true
@@ -20,7 +19,7 @@ func NewCmdRoot(f *factory.Factory) *cobra.Command {
 
 	cmd.AddCommand(auth.NewAuthCmd(f))
 	cmd.AddCommand(jiraGet.NewGetCmd(f))
-	cmd.AddCommand(jiraCreate.NewGetCmd(f))
+	cmd.AddCommand(jiraCreate.NewCreateCmd(f))
 
 	auth.DisableAuthCheck(cmd)
 

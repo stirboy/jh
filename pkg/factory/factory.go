@@ -1,7 +1,10 @@
 package factory
 
 import (
+	"os"
+
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
+	"github.com/stirboy/jh/pkg/cmd/jira/gitclient"
 	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
 	"github.com/stirboy/jh/pkg/config"
 )
@@ -10,20 +13,22 @@ type Factory struct {
 	Config     func() (config.Config, error)
 	JiraClient func() (*jira.Client, error)
 	Prompter   prompt.Prompter
+	GitClient  func() (gitclient.GitClient, error)
 }
 
 func NewFactory() *Factory {
 	f := &Factory{
-		Config:   configFunc(),
-		Prompter: prompt.NewPrompter(),
+		Config:    configF(),
+		Prompter:  prompt.NewPrompter(),
+		GitClient: gitClientF(),
 	}
 
-	f.JiraClient = jiraClientFunc(f) // depends on Config
+	f.JiraClient = jiraClientF(f) // depends on Config
 
 	return f
 }
 
-func configFunc() func() (config.Config, error) {
+func configF() func() (config.Config, error) {
 	var cachedConfig config.Config
 	var configError error
 	return func() (config.Config, error) {
@@ -35,7 +40,7 @@ func configFunc() func() (config.Config, error) {
 	}
 }
 
-func jiraClientFunc(f *Factory) func() (*jira.Client, error) {
+func jiraClientF(f *Factory) func() (*jira.Client, error) {
 	return func() (*jira.Client, error) {
 		cfg, err := f.Config()
 		if err != nil {
@@ -68,5 +73,18 @@ func jiraClientFunc(f *Factory) func() (*jira.Client, error) {
 		}
 
 		return jiraClient, nil
+	}
+}
+
+func gitClientF() func() (gitclient.GitClient, error) {
+	return func() (gitclient.GitClient, error) {
+		path, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+
+		return &gitclient.Client{
+			GitPath: path,
+		}, nil
 	}
 }

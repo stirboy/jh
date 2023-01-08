@@ -3,9 +3,11 @@ package create
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
+	"github.com/stirboy/jh/pkg/cmd/jira/gitclient"
 	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
 	"github.com/stirboy/jh/pkg/cmd/jira/users"
 	"github.com/stirboy/jh/pkg/factory"
@@ -15,27 +17,28 @@ import (
 type CreateOptions struct {
 	JiraClient      func() (*jira.Client, error)
 	Prompter        prompt.Prompter
+	GitClient       func() (gitclient.GitClient, error)
 	CreateGitBranch string
 }
 
-func NewGetCmd(f *factory.Factory) *cobra.Command {
+func NewCreateCmd(f *factory.Factory) *cobra.Command {
 	ops := &CreateOptions{
 		JiraClient: f.JiraClient,
 		Prompter:   f.Prompter,
+		GitClient:  f.GitClient,
 	}
 
 	cmd := &cobra.Command{
 		Use:     "create",
 		Aliases: []string{"cr"},
 		Short:   "create jira issue",
-		Args:    cobra.ExactArgs(0),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(ops)
 		},
 	}
 
-	cmd.Flags().StringVarP(&ops.CreateGitBranch, "new-branch", "b", "", "Create new branch with newly created jira issue key")
+	cmd.Flags().StringVarP(&ops.CreateGitBranch, "branch", "b", "", "Create new branch with newly created jira issue key")
 
 	return cmd
 }
@@ -116,8 +119,25 @@ func run(ops *CreateOptions) error {
 
 	fmt.Printf("\ncreated issue: %s%s%s\n", jiraClient.BaseURL, "browse/", issue.Key)
 
-	if err = CreateGitBranch(issue.Key, ops); err != nil {
-		return err
+	// create and checkout to new branch
+	if ops.CreateGitBranch != "" {
+		branchName := strings.Replace(ops.CreateGitBranch, "@", strings.ToLower(issue.Key), 1)
+
+		gitClient, err := ops.GitClient()
+		if err != nil {
+			return err
+		}
+
+		if err = gitClient.CreateBranchWithCheckout(branchName); err != nil {
+			return err
+		}
+
+		fmt.Printf("switched to branch: '%v'\n", branchName)
 	}
+
 	return nil
+}
+
+func normalizeBranchName(branchName, issueKey string) string {
+	return strings.Replace(branchName, "@", strings.ToLower(issueKey), 1)
 }

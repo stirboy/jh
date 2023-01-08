@@ -9,15 +9,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 )
 
-func CreateGitBranch(issueKey string, ops *CreateOptions) error {
-	// create and checkout to new branch
-	if ops.CreateGitBranch == "" {
-		return nil
-	}
-
-	// printing out a line for formatting
-	fmt.Println()
-
+func CreateGitBranch(issueKey string, branchName string) error {
 	path, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("jh create branch failed: %w", err)
@@ -33,7 +25,7 @@ func CreateGitBranch(issueKey string, ops *CreateOptions) error {
 		return fmt.Errorf("jh create branch failed: %w", err)
 	}
 
-	branchName := strings.Replace(ops.CreateGitBranch, "@", strings.ToLower(issueKey), 1)
+	branchName = strings.Replace(branchName, "@", strings.ToLower(issueKey), 1)
 	err = worktree.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(branchName),
 		Create: true,

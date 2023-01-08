@@ -13,11 +13,9 @@ type RequiredFieldsResult struct {
 
 func getRequiredFieldsResultAsync(c *jira.Client, p *Project, ch chan<- *RequiredFieldsResult) {
 	go func() {
-		go func() {
-			result := getRequiredFieldsResult(c, p)
-			ch <- result
-			close(ch)
-		}()
+		result := getRequiredFieldsResult(c, p)
+		ch <- result
+		close(ch)
 	}()
 }
 
