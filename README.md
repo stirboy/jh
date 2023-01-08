@@ -29,4 +29,11 @@
 
    ```
 
-4. You are good to go ;)
+4. You are good to go. Type `jh` to see how to use it ;)
+
+    ```sh
+
+    $ jh
+
+
+    ```
