@@ -23,6 +23,16 @@ func MapKeys[K string, V any](m map[K]V) ([]K, error) {
 	return slice, nil
 }
 
+func Contains[T comparable](slice []T, val T) bool {
+	for _, v := range slice {
+		if v == val {
+			return true
+		}
+	}
+
+	return false
+}
+
 func ParseJiraResponse(resp *jira.Response) error {
 	defer resp.Body.Close()
 

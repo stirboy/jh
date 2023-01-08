@@ -11,6 +11,7 @@ import (
 	"github.com/stirboy/jh/pkg/cmd/gem"
 	"github.com/stirboy/jh/pkg/cmd/jira/auth"
 	"github.com/stirboy/jh/pkg/factory"
+	"github.com/stirboy/jh/pkg/utils"
 )
 
 func main() {
@@ -43,7 +44,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	gem.GetRandomGem()
+	if showGem() {
+		gem.GetRandomGem()
+	}
+}
+
+func showGem() bool {
+	// only jh is called
+	if len(os.Args) == 1 {
+		return false
+	}
+	// help function is called
+	if len(os.Args) > 1 && (utils.Contains(os.Args, "--help") || utils.Contains(os.Args, "-h")) {
+		return false
+	}
+
+	return true
 }
 
 func IsUserCancellation(err error) bool {
