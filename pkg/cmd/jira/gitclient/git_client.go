@@ -27,11 +27,6 @@ func NewClient(path string) GitClient {
 // and does a checkout to that branch. All local changes will be preserved.
 // If current directory is not a git repo, error is returned
 func (c *Client) CreateBranchWithCheckout(branchName string) error {
-	// path, err := path
-	// if err != nil {
-	// 	return fmt.Errorf("jh create branch failed: %w", err)
-	// }
-
 	r, err := git.PlainOpen(c.GitPath)
 	if err != nil {
 		return fmt.Errorf("jh create branch failed: %w", err)
