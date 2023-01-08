@@ -14,6 +14,7 @@ import (
 	"github.com/stirboy/jh/pkg/cmd/jira/tests/httpmock"
 	"github.com/stirboy/jh/pkg/config"
 	"github.com/stirboy/jh/pkg/factory"
+	"github.com/stirboy/jh/pkg/iostreams"
 	"github.com/stretchr/testify/assert"
 	"github.com/trivago/tgo/tcontainer"
 )
@@ -106,6 +107,7 @@ func TestCreate_execute(t *testing.T) {
 			}
 
 			// create factory
+			out := &bytes.Buffer{}
 			factory := &factory.Factory{
 				Config: func() (config.Config, error) {
 					return cfg, nil
@@ -115,11 +117,14 @@ func TestCreate_execute(t *testing.T) {
 					c := &http.Client{
 						Transport: reg,
 					}
-					return jira.NewClient("", c)
+					return jira.NewClient("https://jira-url", c)
 				},
 				Prompter: p,
 				GitClient: func() (gitclient.GitClient, error) {
 					return gitclient.NewGitClientMock(), nil
+				},
+				IOStream: &iostreams.IOStream{
+					Out: out,
 				},
 			}
 
@@ -148,6 +153,8 @@ func TestCreate_execute(t *testing.T) {
 				assert.Equal("Pick a project", p.SelectCalls()[0].S)
 				assert.Equal("Pick issue type", p.SelectCalls()[1].S)
 			}
+
+			assert.Equal("\ncreated issue: https://jira-url/browse/PROJ-1\n", out.String())
 		})
 	}
 }

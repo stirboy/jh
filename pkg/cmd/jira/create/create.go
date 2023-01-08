@@ -3,6 +3,7 @@ package create
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
@@ -19,6 +20,7 @@ type CreateOptions struct {
 	Prompter        prompt.Prompter
 	GitClient       func() (gitclient.GitClient, error)
 	CreateGitBranch string
+	Out             io.Writer
 }
 
 func NewCreateCmd(f *factory.Factory) *cobra.Command {
@@ -26,6 +28,7 @@ func NewCreateCmd(f *factory.Factory) *cobra.Command {
 		JiraClient: f.JiraClient,
 		Prompter:   f.Prompter,
 		GitClient:  f.GitClient,
+		Out:        f.IOStream.Out,
 	}
 
 	cmd := &cobra.Command{
@@ -117,7 +120,7 @@ func run(ops *CreateOptions) error {
 		return utils.ParseJiraResponse(resp)
 	}
 
-	fmt.Printf("\ncreated issue: %s%s%s\n", jiraClient.BaseURL, "browse/", issue.Key)
+	fmt.Fprintf(ops.Out, "\ncreated issue: %s%s%s\n", jiraClient.BaseURL, "browse/", issue.Key)
 
 	// create and checkout to new branch
 	if ops.CreateGitBranch != "" {
@@ -131,8 +134,6 @@ func run(ops *CreateOptions) error {
 		if err = gitClient.CreateBranchWithCheckout(branchName); err != nil {
 			return err
 		}
-
-		fmt.Printf("switched to branch: '%v'\n", branchName)
 	}
 
 	return nil

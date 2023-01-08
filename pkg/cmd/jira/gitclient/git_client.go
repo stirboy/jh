@@ -2,9 +2,11 @@ package gitclient
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/stirboy/jh/pkg/iostreams"
 )
 
 //go:generate moq -rm -out git_client_mock.go . GitClient
@@ -15,11 +17,14 @@ type GitClient interface {
 // client implements GitClient
 type Client struct {
 	GitPath string
+
+	Stdout io.Writer
 }
 
-func NewClient(path string) GitClient {
+func NewClient(path string, iostream *iostreams.IOStream) GitClient {
 	return &Client{
 		GitPath: path,
+		Stdout:  iostream.Out,
 	}
 }
 
@@ -45,6 +50,8 @@ func (c *Client) CreateBranchWithCheckout(branchName string) error {
 	if err != nil {
 		return fmt.Errorf("jh create branch failed: %w", err)
 	}
+
+	fmt.Fprintf(c.Stdout, "switched to branch: '%v'\n", branchName)
 
 	return nil
 }

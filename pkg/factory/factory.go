@@ -7,6 +7,7 @@ import (
 	"github.com/stirboy/jh/pkg/cmd/jira/gitclient"
 	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
 	"github.com/stirboy/jh/pkg/config"
+	"github.com/stirboy/jh/pkg/iostreams"
 )
 
 type Factory struct {
@@ -14,16 +15,18 @@ type Factory struct {
 	JiraClient func() (*jira.Client, error)
 	Prompter   prompt.Prompter
 	GitClient  func() (gitclient.GitClient, error)
+	IOStream   *iostreams.IOStream
 }
 
 func NewFactory() *Factory {
 	f := &Factory{
-		Config:    configF(),
-		Prompter:  prompt.NewPrompter(),
-		GitClient: gitClientF(),
+		Config:   configF(),
+		Prompter: prompt.NewPrompter(),
+		IOStream: iostreams.NewIOStream(),
 	}
 
 	f.JiraClient = jiraClientF(f) // depends on Config
+	f.GitClient = gitClientF(f)   // depends on IOStream
 
 	return f
 }
@@ -76,15 +79,13 @@ func jiraClientF(f *Factory) func() (*jira.Client, error) {
 	}
 }
 
-func gitClientF() func() (gitclient.GitClient, error) {
+func gitClientF(f *Factory) func() (gitclient.GitClient, error) {
 	return func() (gitclient.GitClient, error) {
 		path, err := os.Getwd()
 		if err != nil {
 			return nil, err
 		}
 
-		return &gitclient.Client{
-			GitPath: path,
-		}, nil
+		return gitclient.NewClient(path, f.IOStream), nil
 	}
 }

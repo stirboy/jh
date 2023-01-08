@@ -1,6 +1,8 @@
 package prompt
 
-import "github.com/AlecAivazis/survey/v2"
+import (
+	"github.com/AlecAivazis/survey/v2"
+)
 
 const (
 	yes = "yes"
@@ -21,7 +23,8 @@ func NewPrompter() Prompter {
 }
 
 // prompter implementation
-type surveyPrompter struct{}
+type surveyPrompter struct {
+}
 
 func (p *surveyPrompter) Select(message string, options []string) (result string, err error) {
 	prompt := &survey.Select{
@@ -79,9 +82,10 @@ func (p *surveyPrompter) Confirm(message string) (bool, error) {
 }
 
 func askSurvey(p survey.Prompt, r interface{}, ops ...survey.AskOpt) error {
-	ops = append(ops, survey.WithIcons(func(icons *survey.IconSet) {
-		icons.Question.Text = ">>"
-		icons.Question.Format = "green+hb"
-	}))
+	ops = append(ops,
+		survey.WithIcons(func(icons *survey.IconSet) {
+			icons.Question.Text = ">>"
+			icons.Question.Format = "green+hb"
+		}))
 	return survey.AskOne(p, r, ops...)
 }
