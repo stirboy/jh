@@ -2,6 +2,7 @@ package get
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -44,6 +45,11 @@ func run(ops *GetOptions) error {
 		panic(err)
 	}
 
-	fmt.Printf("Issue key: %v\n", issue.Fields.Reporter)
+	bytes, err := json.MarshalIndent(issue, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(bytes))
 	return nil
 }
