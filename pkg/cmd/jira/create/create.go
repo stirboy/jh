@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/MakeNowJust/heredoc"
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/cmd/jira/gitclient"
@@ -34,7 +35,20 @@ func NewCreateCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
 		Aliases: []string{"cr"},
-		Short:   "create jira issue",
+		Short:   "Create jira issue",
+		Example: heredoc.Doc(`
+			# create jira issue
+			$ jh create
+			$ jh cr
+
+			# create jira issue and checkout to a new branch
+			$ jh create -b branch-name
+
+			# create jira issue and checkout to a new branch which contains jira issue key
+			# @ sign is replaced with actual jira issue key
+			# Ex. feature/@/test --> feature/issue-1/test
+			$ jh create -b @/branch-name
+		`),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(ops)

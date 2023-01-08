@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/MakeNowJust/heredoc"
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/cmd/jira/prompt"
@@ -22,7 +23,11 @@ type AuthOptions struct {
 func NewAuthCmd(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
-		Short: "jira authentication",
+		Short: "Authenticate with Jira",
+		Example: heredoc.Doc(`
+			# start authentication
+			$ gh auth
+		`),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ops := &AuthOptions{

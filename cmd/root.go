@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/cmd/jira/auth"
 	jiraCreate "github.com/stirboy/jh/pkg/cmd/jira/create"
@@ -11,7 +12,12 @@ import (
 func NewCmdRoot(f *factory.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "jh",
-		Short: "jira helper",
+		Short: "Jira Helper",
+		Example: heredoc.Doc(`
+			$ jh auth
+			$ jh create
+			$ jh create -b branch-name
+		`),
 	}
 
 	cmd.SilenceErrors = true
