@@ -17,7 +17,7 @@ func NewCmdRoot(f *factory.Factory) *cobra.Command {
 			$ jh create
 			$ jh create -b branch-name
 
-			# Most common case (for more info run 'jh cr --help')
+			# Common case (for more info run 'jh cr --help')
 			# 1. Create jira issue
 			# 2. Create new branch and checkout on it (@ is substituted with created issue key)
 			$ jh cr -b @ 
