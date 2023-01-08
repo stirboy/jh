@@ -17,7 +17,7 @@ func GetRandomGem() {
 	max := 100
 
 	r := min + rand.Intn(max-min)
-	if r <= 10 {
+	if r <= 3 {
 
 		joke, err := fetchRandomDadJoke()
 		if err != nil {
