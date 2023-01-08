@@ -24,3 +24,7 @@ func TestCreateBranchWithCheckout(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "switched to branch: 'feature/test'\n", out.String())
 }
+
+func AssertEquals[T comparable](t *testing.T, a, b T) {
+
+}

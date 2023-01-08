@@ -20,7 +20,7 @@ func inputSummary(prompter prompt.Prompter) (string, error) {
 }
 
 func selectProject(prompter prompt.Prompter, projectKeyMap map[string]*Project) (*Project, error) {
-	projectKeys, err := utils.MapStringKeys(projectKeyMap)
+	projectKeys, err := utils.MapKeys(projectKeyMap)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func selectIssueType(prompter prompt.Prompter, project *Project) (*jira.IssueTyp
 		mapOfIssueTypes[project.IssueTypes[i].Name] = &project.IssueTypes[i]
 	}
 
-	issueTypeKeys, err := utils.MapStringKeys(mapOfIssueTypes)
+	issueTypeKeys, err := utils.MapKeys(mapOfIssueTypes)
 	if err != nil {
 		return nil, err
 	}

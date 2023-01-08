@@ -6,37 +6,21 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"reflect"
 
 	jira "github.com/andygrunwald/go-jira/v2/cloud"
 )
 
-func MapStringKeys(val interface{}) ([]string, error) {
-	if val == nil {
+func MapKeys[K string, V any](m map[K]V) ([]K, error) {
+	if m == nil {
 		return nil, errors.New("nil cannot be passed")
 	}
 
-	t, isMap := getMapType(val)
-	if !isMap {
-		return nil, errors.New("val passed is not a map")
+	slice := []K{}
+	for k := range m {
+		slice = append(slice, k)
 	}
 
-	if t.Key().Kind() != reflect.String {
-		return nil, errors.New("map key should be string")
-	}
-
-	v := reflect.ValueOf(val)
-	keys := v.MapKeys()
-
-	length := len(keys)
-
-	resultSlice := reflect.MakeSlice(reflect.SliceOf(t.Key()), length, length)
-
-	for i, key := range keys {
-		resultSlice.Index(i).Set(key)
-	}
-
-	return resultSlice.Interface().([]string), nil
+	return slice, nil
 }
 
 func ParseJiraResponse(resp *jira.Response) error {
@@ -65,9 +49,4 @@ func ParseResponse(resp *http.Response) ([]byte, error) {
 		return nil, err
 	}
 	return bodyBytes, nil
-}
-
-func getMapType(val interface{}) (reflect.Type, bool) {
-	t := reflect.TypeOf(val)
-	return t, t.Kind() == reflect.Map
 }
