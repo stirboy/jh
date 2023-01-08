@@ -2,6 +2,8 @@
 
 `jh` is a command tool utility to create jira issues right from the terminal
 
+![screenshot of jh create](./img/jh-create.png)
+
 ## Installation
 
 1. Verify that you have Go 1.19+ installed
