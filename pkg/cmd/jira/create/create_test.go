@@ -158,7 +158,7 @@ func TestCreate_test_backward_compatible_interactive_flow(t *testing.T) {
 				assert.Equal("Pick issue type", p.SelectCalls()[1].S)
 			}
 
-			assert.Equal("Seems like non-interactive mode was not configured. Running interactively...\n\ncreated issue: https://jira-url/browse/PROJ-1\n", out.String())
+			assert.Equal("Looks like non-interactive mode was not configured. Running interactively...\n\ncreated issue: https://jira-url/browse/PROJ-1\n", out.String())
 
 			outBuf := bytes.Buffer{}
 			readConfigF(&outBuf)
@@ -292,7 +292,7 @@ func TestCreate_test_interactive_flow(t *testing.T) {
 				assert.Equal("Pick issue type", p.SelectCalls()[1].S)
 			}
 
-			assert.Equal("Seems like non-interactive mode was not configured. Running interactively...\n\ncreated issue: https://jira-url/browse/PROJ-1\n", out.String())
+			assert.Equal("Looks like non-interactive mode was not configured. Running interactively...\n\ncreated issue: https://jira-url/browse/PROJ-1\n", out.String())
 
 			outBuf := bytes.Buffer{}
 			readConfigF(&outBuf)

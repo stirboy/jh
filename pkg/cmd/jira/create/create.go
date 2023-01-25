@@ -45,6 +45,11 @@ func NewCreateCmd(f *factory.Factory) *cobra.Command {
 			$ jh create
 			$ jh cr
 
+			# command will remember previously chosen options and will use them by default
+			# to override this behaviour use interactive flag (--interactive or -i)
+			# note: first call will always be interactive
+			$ jh create -i
+
 			# create jira issue and checkout to a new branch
 			$ jh create -b branch-name
 
@@ -114,7 +119,7 @@ func createJiraIssue(ops *CreateOptions) (*jira.Issue, error) {
 
 	if ops.IsInteractive || !isConfigPopulated {
 		if projectKeyValue == "" {
-			fmt.Fprintln(ops.Out, "Seems like non-interactive mode was not configured. Running interactively...")
+			fmt.Fprintln(ops.Out, "Looks like non-interactive mode was not configured. Running interactively...")
 		}
 		issue, err := runInteractive(jiraClient, cfg, ops.Prompter, ops.Out)
 		if err != nil {
