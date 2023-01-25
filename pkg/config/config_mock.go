@@ -23,8 +23,14 @@ var _ Config = &ConfigMock{}
 //			GetFunc: func(s string) (string, error) {
 //				panic("mock out the Get method")
 //			},
+//			GetNestedFunc: func(strings []string) (string, error) {
+//				panic("mock out the GetNested method")
+//			},
 //			SetFunc: func(s1 string, s2 string)  {
 //				panic("mock out the Set method")
+//			},
+//			SetNestedFunc: func(strings []string, s string)  {
+//				panic("mock out the SetNested method")
 //			},
 //			WriteFunc: func() error {
 //				panic("mock out the Write method")
@@ -42,8 +48,14 @@ type ConfigMock struct {
 	// GetFunc mocks the Get method.
 	GetFunc func(s string) (string, error)
 
+	// GetNestedFunc mocks the GetNested method.
+	GetNestedFunc func(strings []string) (string, error)
+
 	// SetFunc mocks the Set method.
 	SetFunc func(s1 string, s2 string)
+
+	// SetNestedFunc mocks the SetNested method.
+	SetNestedFunc func(strings []string, s string)
 
 	// WriteFunc mocks the Write method.
 	WriteFunc func() error
@@ -58,6 +70,11 @@ type ConfigMock struct {
 			// S is the s argument value.
 			S string
 		}
+		// GetNested holds details about calls to the GetNested method.
+		GetNested []struct {
+			// Strings is the strings argument value.
+			Strings []string
+		}
 		// Set holds details about calls to the Set method.
 		Set []struct {
 			// S1 is the s1 argument value.
@@ -65,13 +82,22 @@ type ConfigMock struct {
 			// S2 is the s2 argument value.
 			S2 string
 		}
+		// SetNested holds details about calls to the SetNested method.
+		SetNested []struct {
+			// Strings is the strings argument value.
+			Strings []string
+			// S is the s argument value.
+			S string
+		}
 		// Write holds details about calls to the Write method.
 		Write []struct {
 		}
 	}
 	lockAuthToken sync.RWMutex
 	lockGet       sync.RWMutex
+	lockGetNested sync.RWMutex
 	lockSet       sync.RWMutex
+	lockSetNested sync.RWMutex
 	lockWrite     sync.RWMutex
 }
 
@@ -134,6 +160,38 @@ func (mock *ConfigMock) GetCalls() []struct {
 	return calls
 }
 
+// GetNested calls GetNestedFunc.
+func (mock *ConfigMock) GetNested(strings []string) (string, error) {
+	if mock.GetNestedFunc == nil {
+		panic("ConfigMock.GetNestedFunc: method is nil but Config.GetNested was just called")
+	}
+	callInfo := struct {
+		Strings []string
+	}{
+		Strings: strings,
+	}
+	mock.lockGetNested.Lock()
+	mock.calls.GetNested = append(mock.calls.GetNested, callInfo)
+	mock.lockGetNested.Unlock()
+	return mock.GetNestedFunc(strings)
+}
+
+// GetNestedCalls gets all the calls that were made to GetNested.
+// Check the length with:
+//
+//	len(mockedConfig.GetNestedCalls())
+func (mock *ConfigMock) GetNestedCalls() []struct {
+	Strings []string
+} {
+	var calls []struct {
+		Strings []string
+	}
+	mock.lockGetNested.RLock()
+	calls = mock.calls.GetNested
+	mock.lockGetNested.RUnlock()
+	return calls
+}
+
 // Set calls SetFunc.
 func (mock *ConfigMock) Set(s1 string, s2 string) {
 	if mock.SetFunc == nil {
@@ -167,6 +225,42 @@ func (mock *ConfigMock) SetCalls() []struct {
 	mock.lockSet.RLock()
 	calls = mock.calls.Set
 	mock.lockSet.RUnlock()
+	return calls
+}
+
+// SetNested calls SetNestedFunc.
+func (mock *ConfigMock) SetNested(strings []string, s string) {
+	if mock.SetNestedFunc == nil {
+		panic("ConfigMock.SetNestedFunc: method is nil but Config.SetNested was just called")
+	}
+	callInfo := struct {
+		Strings []string
+		S       string
+	}{
+		Strings: strings,
+		S:       s,
+	}
+	mock.lockSetNested.Lock()
+	mock.calls.SetNested = append(mock.calls.SetNested, callInfo)
+	mock.lockSetNested.Unlock()
+	mock.SetNestedFunc(strings, s)
+}
+
+// SetNestedCalls gets all the calls that were made to SetNested.
+// Check the length with:
+//
+//	len(mockedConfig.SetNestedCalls())
+func (mock *ConfigMock) SetNestedCalls() []struct {
+	Strings []string
+	S       string
+} {
+	var calls []struct {
+		Strings []string
+		S       string
+	}
+	mock.lockSetNested.RLock()
+	calls = mock.calls.SetNested
+	mock.lockSetNested.RUnlock()
 	return calls
 }
 

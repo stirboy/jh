@@ -31,8 +31,14 @@ func NewFromString(cfgString string) *ConfigMock {
 		GetFunc: func(s string) (string, error) {
 			return c.Get(s)
 		},
+		GetNestedFunc: func(keys []string) (string, error) {
+			return c.GetNested(keys)
+		},
 		SetFunc: func(s1 string, s2 string) {
 			c.Set(s1, s2)
+		},
+		SetNestedFunc: func(keys []string, val string) {
+			c.SetNested(keys, val)
 		},
 		WriteFunc: func() error {
 			return c.Write()

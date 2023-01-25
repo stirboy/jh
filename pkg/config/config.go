@@ -22,7 +22,9 @@ var (
 type Config interface {
 	AuthToken() (string, error)
 	Get(string) (string, error)
+	GetNested([]string) (string, error)
 	Set(string, string)
+	SetNested([]string, string)
 	Write() error
 }
 
@@ -59,10 +61,41 @@ func (c *cfg) Get(key string) (string, error) {
 	return m.Value, nil
 }
 
+func (c *cfg) GetNested(keys []string) (string, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	m := c.entries
+	for _, key := range keys {
+		var err error
+		m, err = m.Get(key)
+		if err != nil {
+			return "", KeyNotFoundError{key}
+		}
+	}
+	return m.Value, nil
+}
+
 func (c *cfg) Set(key, val string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.entries.Set(key, yamlmap.StringValue(val))
+}
+
+func (c *cfg) SetNested(keys []string, val string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m := c.entries
+	for i := 0; i < len(keys)-1; i++ {
+		key := keys[i]
+		entry, err := m.Get(key)
+		if err != nil {
+			entry = yamlmap.MapValue()
+			m.Set(key, entry)
+		}
+		m = entry
+	}
+
+	m.Set(keys[len(keys)-1], yamlmap.StringValue(val))
 }
 
 func (c *cfg) Write() error {

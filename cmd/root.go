@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stirboy/jh/pkg/cmd/jira/auth"
 	jiraCreate "github.com/stirboy/jh/pkg/cmd/jira/create"
+	jiraGet "github.com/stirboy/jh/pkg/cmd/jira/get"
 	"github.com/stirboy/jh/pkg/factory"
 )
 
@@ -29,6 +30,7 @@ func NewCmdRoot(f *factory.Factory) *cobra.Command {
 
 	cmd.AddCommand(auth.NewAuthCmd(f))
 	cmd.AddCommand(jiraCreate.NewCreateCmd(f))
+	cmd.AddCommand(jiraGet.NewGetCmd(f))
 
 	auth.DisableAuthCheck(cmd)
 

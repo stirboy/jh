@@ -46,7 +46,6 @@ func (c *Client) CreateBranchWithCheckout(branchName string) error {
 		Branch: plumbing.NewBranchReferenceName(branchName),
 		Create: true,
 		Keep:   true,
-		
 	})
 	if err != nil {
 		return fmt.Errorf("jh create branch failed: %w", err)
