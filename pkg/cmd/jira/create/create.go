@@ -108,7 +108,7 @@ func createJiraIssue(ops *CreateOptions) (*jira.Issue, error) {
 
 	isConfigPopulated := true
 	projectKeyValue, err := cfg.GetNested([]string{"configuration", "issue", "projectKey"})
-	if err != nil {
+	if err != nil || projectKeyValue == "" {
 		isConfigPopulated = false
 	}
 
