@@ -26,7 +26,7 @@ func NewAuthCmd(f *factory.Factory) *cobra.Command {
 		Short: "Authenticate with Jira",
 		Example: heredoc.Doc(`
 			# start authentication
-			$ gh auth
+			$ jh auth
 		`),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
